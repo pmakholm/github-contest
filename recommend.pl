@@ -49,7 +49,7 @@ sub recommend {
 
         $lines += $current->{lang}->{$_}
             for keys %{ $current->{lang} };
-        $language{$_} = 1 + ($current->{lang}->{$_} / $lines ) 
+        $language{$_} = 1 + (($current->{lang}->{$_} / $lines ) > 0.25 ? ($current->{lang}->{$_} / $lines ) : 0) 
             for keys %{ $current->{lang} };
 
         for my $look (keys %scores) {
