@@ -19,6 +19,13 @@ my $lang = retrieve "lang.study";
 my $owners = retrieve "owners.study";
 my $top  = retrieve "top.study";
 
+sub original {
+    my $look = shift;
+
+    $look = $repo->{$look}->{forked} while( $repo->{$look}->{forked} );
+    return $look;
+}
+
 sub recommend {
     my $id      = shift;
     my $current = $user->{$id};
@@ -58,10 +65,8 @@ sub recommend {
 
     # Preferer the original repos 
     for my $look (keys %scores) {
-        my $upstream = $repo->{$look}->{forked}
-            or next;
-
-        $upstream = $repo->{$upstream}->{forked} while $repo->{$upstream}->{forked};
+	my $upstream = original($look);
+        next if $look == $upstream;
 
         $scores{$upstream} = $scores{$upstream} > $scores{$look} ?  $scores{$upstream} : $scores{$look} ;
         $scores{$repo} = 0;
@@ -69,7 +74,7 @@ sub recommend {
 
     # Remove repos the user is already is watching
     for my $look (keys %scores) {
-        $scores{$look} = 0 if grep { $_ == $look } keys %{ $current->{repos} };
+        $scores{$look} = 0 if grep { original($_) == $look } keys %{ $current->{repos} };
     }
 
     return ( sort { $scores{$b} <=> $scores{$a} } keys %scores)[0..9];
