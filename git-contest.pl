@@ -117,6 +117,11 @@ sub recommend {
         $scores{$repo} = 0;
     }
 
+    # Remove repos the user is already is watching
+    for my $repo (keys %scores) {
+        $scores{$repo} = 0 if grep { $_ == $repo } @{ $user{$user}->{repos} };
+    }
+
     return ( sort { $scores{$b} <=> $scores{$a} } keys %scores)[0..9];
 }
 
