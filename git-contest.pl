@@ -60,10 +60,12 @@ my %lang;
             $lang{$lang}->{$repo}         += $count;
         }
 
-        my $mainlang = (sort { $repo{$repo}->{lang}->{$b} <=> $repo{$repo}->{lang}->{$a} } keys %{ $repo{$repo}->{lang} })[0]; 
+        my @mainlangs = (sort { $repo{$repo}->{lang}->{$b} <=> $repo{$repo}->{lang}->{$a} } keys %{ $repo{$repo}->{lang} })[0..2]; 
         
-        $repo{$repo}->{mainlang}        = $mainlang;
-        $user{$_}->{lang}->{$mainlang} += $repo{$repo}->{lang}->{$mainlang} for @{ $repo{$repo}->{users} };
+        $repo{$repo}->{mainlang}        = \@mainlangs;
+        for my $user ( @{ $repo{$repo}->{users} } ) {
+            $user{$user}->{lang}->{$_} += $repo{$repo}->{lang}->{$_} for @mainlangs;
+        }
     }
 }
 
