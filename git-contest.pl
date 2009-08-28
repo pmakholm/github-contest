@@ -45,7 +45,7 @@ my %lang;
     close $fh;
 }
 
-if (0) {
+{
     open my $fh, "<", "download/lang.txt";
     while (defined( my $line = <$fh> )) {
         chomp $line;
@@ -71,14 +71,30 @@ sub recommend {
     # Give the top 10 a base score to ensure at least 10 recommendations
     $scores{$_} += 1 for @top10;
 
+    # Give repositories a network based score
+    my %network;
     my @up      = map { $repo{$_}->{owner} }      @{ $user{$user}->{repos} };
     my @down    = map { @{ $repo{$_}->{users} } } @{ $user{$user}->{owns}  };
 
-    my %network;
     $network{$_} = 1 for @up, @down;
 
     for my $connection (keys %network) {
         $scores{$_} += 5 * $network{$connection} for @{ $user{$connection}->{owns} };
+    }
+
+    # Correct according to language preferrence
+    if (keys %{ $user{$user}->{lang} }) {
+        my $lines = 1;
+        my %language;
+
+        $lines += $user{$user}->{lang}->{$_}
+            for keys %{ $user{$user}->{lang} };
+        $language{$_} = 1 + ($user{$user}->{lang}->{$_} / $lines ) 
+            for keys %{ $user{$user}->{lang} };
+
+        for my $repo (keys %scores) {
+            $scores{$repo} *= $language{$_} // 0.9 for keys %{ $repo{$repo}->{lang} }
+        }
     }
 
     return ( sort { $scores{$b} <=> $scores{$a} } keys %scores)[0..9];
