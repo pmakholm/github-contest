@@ -1,0 +1,33 @@
+#/usr/bin/perl
+
+use strict;
+use warnings;
+
+die "$0 <old> <new>" unless @ARGV == 2;
+
+my %old;
+open my $oldfh, "<", $ARGV[0];
+while(<$oldfh>) {
+    chomp;
+    my ($user, $recomendations) = split /:/;
+    $old{$user} = { map { $_ => 1 } split( /,/, $recomendations) } ;
+}
+close $oldfh;
+
+my %new;
+open my $newfh, "<", $ARGV[1];
+while(<$newfh>) {
+    chomp;
+    my ($user, $recomendations) = split /:/;
+    $new{$user} = { map { $_ => 1 } split( /,/, $recomendations) } ;
+}
+close $newfh;
+
+for my $key (sort { $a <=> $b } keys %old) {
+    print "$key:";
+    print join(", ",
+        map {
+	    $a = ""; $a = "-$_" unless $new{$key}{$_}; $a = "+$_" unless $old{$key}{$_}; $a ? $a : ();
+        } sort { $a <=> $b } keys %{ $new{$key} }, keys %{ $old{$key} });
+    print "\n";
+}
