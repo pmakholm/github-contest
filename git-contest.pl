@@ -62,14 +62,17 @@ my %lang;
     }
 }
 
-my @top10 = (map { $_->[0] } sort { $b->[1] <=> $a->[1] } map { [ $_, scalar( @{ $repo{$_}->{users} } ) ] } keys %repo)[0..9];
+my @top = (map { $_->[0] } sort { $b->[1] <=> $a->[1] } map { [ $_, scalar( @{ $repo{$_}->{users} } ) ] } keys %repo)[0..49];
 
 sub recommend {
     my $user = shift;
     my %scores;
 
-    # Give the top 10 a base score to ensure at least 10 recommendations
-    $scores{$_} += 1 for @top10;
+    {
+        # Give the top 50 a base score
+        my $i = 1;
+        $scores{$_} += $i++ for reverse @top;
+    }
 
     # Give repositories a network based score
     my %network;
@@ -79,12 +82,12 @@ sub recommend {
     $network{$_} = 1 for @up, @down;
 
     for my $connection (keys %network) {
-        $scores{$_} += 5 * $network{$connection} for @{ $user{$connection}->{owns} };
+        $scores{$_} += 200 * $network{$connection} for @{ $user{$connection}->{owns} };
     }
 
     # Correct according to language preferrence
     if (keys %{ $user{$user}->{lang} }) {
-        my $lines = 1;
+        my $lines=1;
         my %language;
 
         $lines += $user{$user}->{lang}->{$_}
