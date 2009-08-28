@@ -59,6 +59,11 @@ my %lang;
 
             $lang{$lang}->{$repo}         += $count;
         }
+
+        my $mainlang = (sort { $repo{$repo}->{lang}->{$b} <=> $repo{$repo}->{lang}->{$a} } keys %{ $repo{$repo}->{lang} })[0]; 
+        
+        $repo{$repo}->{mainlang}        = $mainlang;
+        $user{$_}->{lang}->{$mainlang} += $repo{$repo}->{lang}->{$mainlang} for @{ $repo{$repo}->{users} };
     }
 }
 
@@ -96,7 +101,7 @@ sub recommend {
             for keys %{ $user{$user}->{lang} };
 
         for my $repo (keys %scores) {
-            $scores{$repo} *= $language{$_} // 0.9 for keys %{ $repo{$repo}->{lang} }
+            $scores{$repo} *= $language{ $repo{$repo}->{mainlang} } // 0.9;
         }
     }
 
