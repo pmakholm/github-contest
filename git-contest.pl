@@ -107,6 +107,16 @@ sub recommend {
         }
     }
 
+
+    # Preferer the original repos 
+    for my $repo (keys %scores) {
+        my $upstream = $repo{$repo}->{forked}
+            or next;
+
+        $scores{$upstream} = $scores{$upstream} > $scores{$repo} ?  $scores{$upstream} : $scores{$repo} ;
+        $scores{$repo} = 0;
+    }
+
     return ( sort { $scores{$b} <=> $scores{$a} } keys %scores)[0..9];
 }
 
