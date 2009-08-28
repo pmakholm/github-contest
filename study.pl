@@ -16,6 +16,7 @@ use Storable;
 my %user;
 my %repo;
 my %lang;
+my %owners;
 
 
 {
@@ -23,8 +24,8 @@ my %lang;
     while (defined( my $line = <$fh> )) {
         chomp $line;
         my ($user, $repo) = split /:/, $line;
-        push @{ $user{$user}->{repos} }, $repo;
-        push @{ $repo{$repo}->{users} }, $user;
+        $user{$user}->{repos}->{$repo} = 1;
+        $repo{$repo}->{users}->{$user} = 1;
     }
     close $fh;
 }
@@ -40,8 +41,7 @@ my %lang;
         $repo{$repo}->{created} = $created  // '';
         $repo{$repo}->{forked}  = $fork     // ''; 
 
-        push @{ $user{$owner}->{owns} }, $repo;
-
+	$owners{$owner}->{$repo} = 1;
     }
     close $fh;
 }
@@ -56,7 +56,7 @@ my %lang;
             my ($lang, $count) = split /;/, $langcount;
             
             $repo{$repo}->{lang}->{$lang} += $count;
-            $user{$_}->{lang}->{$lang}    += $count for @{ $repo{$repo}->{users} };
+            $user{$_}->{lang}->{$lang}    += $count for keys %{ $repo{$repo}->{users} };
 
             $lang{$lang}->{$repo}         += $count;
         }
@@ -64,17 +64,19 @@ my %lang;
         my @mainlangs = (sort { $repo{$repo}->{lang}->{$b} <=> $repo{$repo}->{lang}->{$a} } keys %{ $repo{$repo}->{lang} })[0..2]; 
         
         $repo{$repo}->{mainlang}        = \@mainlangs;
-        for my $user ( @{ $repo{$repo}->{users} } ) {
+        for my $user ( keys %{ $repo{$repo}->{users} } ) {
             $user{$user}->{lang}->{$_} += $repo{$repo}->{lang}->{$_} for @mainlangs;
+
         }
     }
 }
 
-my @top = (map { $_->[0] } sort { $b->[1] <=> $a->[1] } map { [ $_, scalar( @{ $repo{$_}->{users} } ) ] } keys %repo)[0..49];
+my @top = (map { $_->[0] } sort { $b->[1] <=> $a->[1] } map { [ $_, scalar( keys %{ $repo{$_}->{users} } ) ] } keys %repo)[0..49];
 
 store \%user, 'user.study';
 store \%repo, 'repo.study';
 store \%lang, 'lang.study';
+store \%owners, 'owners.study';
 store \@top,  'top.study';
 
 

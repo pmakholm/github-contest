@@ -16,29 +16,8 @@ use Storable;
 my $user = retrieve "user.study";
 my $repo = retrieve "repo.study";
 my $lang = retrieve "lang.study";
+my $owners = retrieve "owners.study";
 my $top  = retrieve "top.study";
-
-my @NetworkLevels = ( 0, 1 );
-sub network {
-    my $root = shift;
-    my %network;
-
-    $network{$root} = @NetworkLevels[0];
-    my %done;
-    
-    for my $level (1..$#NetworkLevels) {
-        for my $node (keys %network) {
-            next if $done{$node};
-
-	    $network{$_} //= $NetworkLevels[$level]
-                for map { @{ $repo->{$_}->{users} } } @{ $user->{$node}->{repos} };
-
-	    $done{$node}++;
-        }
-    }
-
-    return \%network;
-} 
 
 sub recommend {
     my $id      = shift;
@@ -51,11 +30,9 @@ sub recommend {
         $scores{$_} += $i++ for reverse @$top;
     }
 
-    # Give repositories a network based score
-    my $network = network($id);
-
-    for my $connection (keys %{ $network }) {
-        $scores{$_} += 200 * $network->{$connection} for @{ $user->{$connection}->{owns} };
+    # Add score to repositories owned by users allready being followed
+    for my $owner (map { $repo->{$_}->{owner} } keys %{ $current->{repos} }) {
+        $scores{$_} += 200 for keys %{ $owners->{$owner} };
     }
 
     # Correct according to language preferrence
@@ -87,7 +64,7 @@ sub recommend {
 
     # Remove repos the user is already is watching
     for my $look (keys %scores) {
-        $scores{$look} = 0 if grep { $_ == $look } @{ $current->{repos} };
+        $scores{$look} = 0 if grep { $_ == $look } keys %{ $current->{repos} };
     }
 
     return ( sort { $scores{$b} <=> $scores{$a} } keys %scores)[0..9];
