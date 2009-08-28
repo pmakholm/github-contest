@@ -46,7 +46,7 @@ sub recommend {
             for keys %{ $current->{lang} };
 
         for my $look (keys %scores) {
-            $scores{$look} *= $language{ $repo->{$look}->{mainlang}->[0] } // 0
+            $scores{$look} *= $language{ $repo->{$look}->{mainlang}->[0] } // 0.5
 		if defined $repo->{$look}->{mainlang}->[0];
             $scores{$look} *= $language{ $repo->{$look}->{mainlang}->[1] } // 0.75
 		if defined $repo->{$look}->{mainlang}->[0];
