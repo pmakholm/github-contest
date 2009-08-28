@@ -18,6 +18,25 @@ my $repo = retrieve "repo.study";
 my $lang = retrieve "lang.study";
 my $top  = retrieve "top.study";
 
+my @NetworkLevels = ( 0, 1);
+sub network {
+    my $root = shift;
+    my %network;
+
+    $network{$root} = @NetworkLevels[0];
+
+    for my $level (1..$#NetworkLevels) {
+        for my $node (keys %network) {
+	    my @up      = map { $repo->{$_}->{owner} }      @{ $user->{$node}->{repos} };
+	    my @down    = map { @{ $repo->{$_}->{users} } } @{ $user->{$node}->{owns}  };
+	
+	    $network{$_} //= $NetworkLevels[$level] for @up, @down;
+        }
+    }
+
+    return \%network;
+} 
+
 sub recommend {
     my $id      = shift;
     my $current = $user->{$id};
@@ -30,14 +49,10 @@ sub recommend {
     }
 
     # Give repositories a network based score
-    my %network;
-    my @up      = map { $repo->{$_}->{owner} }      @{ $current->{repos} };
-    my @down    = map { @{ $repo->{$_}->{users} } } @{ $current->{owns}  };
+    my $network = network($id);
 
-    $network{$_} = 1 for @up, @down;
-
-    for my $connection (keys %network) {
-        $scores{$_} += 200 * $network{$connection} for @{ $user->{$connection}->{owns} };
+    for my $connection (keys %{ $network }) {
+        $scores{$_} += 200 * $network->{$connection} for @{ $user->{$connection}->{owns} };
     }
 
     # Correct according to language preferrence
