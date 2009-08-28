@@ -113,6 +113,8 @@ sub recommend {
         my $upstream = $repo{$repo}->{forked}
             or next;
 
+        $upstream = $repo{$upstream}->{forked} while $repo{$upstream}->{forked};
+
         $scores{$upstream} = $scores{$upstream} > $scores{$repo} ?  $scores{$upstream} : $scores{$repo} ;
         $scores{$repo} = 0;
     }
