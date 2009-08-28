@@ -11,124 +11,71 @@ my $LICENSE = <<EOL;
 EOL
 
 use strict;
+use Storable;
 
-my %user;
-my %repo;
-my %lang;
-
-
-{
-    open my $fh, "<", "download/data.txt";
-    while (defined( my $line = <$fh> )) {
-        chomp $line;
-        my ($user, $repo) = split /:/, $line;
-        push @{ $user{$user}->{repos} }, $repo;
-        push @{ $repo{$repo}->{users} }, $user;
-    }
-    close $fh;
-}
-
-{
-    open my $fh, "<", "download/repos.txt";
-    while (defined( my $line = <$fh> )) {
-        chomp $line;
-        my ($repo, $owner, $name, $created, $fork) = $line =~ m!^(\d+):([^/]*)/([^,]+),([^,]+)(?:,(.*))?!;
-
-        $repo{$repo}->{owner}   = $owner    // warn "no owner in [[$line]]";
-        $repo{$repo}->{name}    = $name     // warn "no name  in [[$line]]";
-        $repo{$repo}->{created} = $created  // '';
-        $repo{$repo}->{forked}  = $fork     // ''; 
-
-        push @{ $user{$owner}->{owns} }, $repo;
-
-    }
-    close $fh;
-}
-
-{
-    open my $fh, "<", "download/lang.txt";
-    while (defined( my $line = <$fh> )) {
-        chomp $line;
-        my ($repo, $langs) = split /:/, $line;
-
-        for my $langcount (split /,/, $langs) {
-            my ($lang, $count) = split /;/, $langcount;
-            
-            $repo{$repo}->{lang}->{$lang} += $count;
-            $user{$_}->{lang}->{$lang}    += $count for @{ $repo{$repo}->{users} };
-
-            $lang{$lang}->{$repo}         += $count;
-        }
-
-        my @mainlangs = (sort { $repo{$repo}->{lang}->{$b} <=> $repo{$repo}->{lang}->{$a} } keys %{ $repo{$repo}->{lang} })[0..2]; 
-        
-        $repo{$repo}->{mainlang}        = \@mainlangs;
-        for my $user ( @{ $repo{$repo}->{users} } ) {
-            $user{$user}->{lang}->{$_} += $repo{$repo}->{lang}->{$_} for @mainlangs;
-        }
-    }
-}
-
-my @top = (map { $_->[0] } sort { $b->[1] <=> $a->[1] } map { [ $_, scalar( @{ $repo{$_}->{users} } ) ] } keys %repo)[0..49];
+my $user = retrieve "user.study";
+my $repo = retrieve "repo.study";
+my $lang = retrieve "lang.study";
+my $top  = retrieve "top.study";
 
 sub recommend {
-    my $user = shift;
+    my $id      = shift;
+    my $current = $user->{$id};
     my %scores;
 
     {
         # Give the top 50 a base score
         my $i = 1;
-        $scores{$_} += $i++ for reverse @top;
+        $scores{$_} += $i++ for reverse @$top;
     }
 
     # Give repositories a network based score
     my %network;
-    my @up      = map { $repo{$_}->{owner} }      @{ $user{$user}->{repos} };
-    my @down    = map { @{ $repo{$_}->{users} } } @{ $user{$user}->{owns}  };
+    my @up      = map { $repo->{$_}->{owner} }      @{ $current->{repos} };
+    my @down    = map { @{ $repo->{$_}->{users} } } @{ $current->{owns}  };
 
     $network{$_} = 1 for @up, @down;
 
     for my $connection (keys %network) {
-        $scores{$_} += 200 * $network{$connection} for @{ $user{$connection}->{owns} };
+        $scores{$_} += 200 * $network{$connection} for @{ $user->{$connection}->{owns} };
     }
 
     # Correct according to language preferrence
-    if (keys %{ $user{$user}->{lang} }) {
+    if (keys %{ $current->{lang} }) {
         my $lines=1;
         my %language;
 
-        $lines += $user{$user}->{lang}->{$_}
-            for keys %{ $user{$user}->{lang} };
-        $language{$_} = 1 + ($user{$user}->{lang}->{$_} / $lines ) 
-            for keys %{ $user{$user}->{lang} };
+        $lines += $current->{lang}->{$_}
+            for keys %{ $current->{lang} };
+        $language{$_} = 1 + ($current->{lang}->{$_} / $lines ) 
+            for keys %{ $current->{lang} };
 
-        for my $repo (keys %scores) {
-            $scores{$repo} *= $language{ $repo{$repo}->{mainlang} } // 0.9;
+        for my $look (keys %scores) {
+            $scores{$look} *= $language{ $_ } // 0.9 for @{ $repo->{$look}->{mainlang} };
         }
     }
 
 
     # Preferer the original repos 
-    for my $repo (keys %scores) {
-        my $upstream = $repo{$repo}->{forked}
+    for my $look (keys %scores) {
+        my $upstream = $repo->{$look}->{forked}
             or next;
 
-        $upstream = $repo{$upstream}->{forked} while $repo{$upstream}->{forked};
+        $upstream = $repo->{$upstream}->{forked} while $repo->{$upstream}->{forked};
 
-        $scores{$upstream} = $scores{$upstream} > $scores{$repo} ?  $scores{$upstream} : $scores{$repo} ;
+        $scores{$upstream} = $scores{$upstream} > $scores{$look} ?  $scores{$upstream} : $scores{$look} ;
         $scores{$repo} = 0;
     }
 
     # Remove repos the user is already is watching
-    for my $repo (keys %scores) {
-        $scores{$repo} = 0 if grep { $_ == $repo } @{ $user{$user}->{repos} };
+    for my $look (keys %scores) {
+        $scores{$look} = 0 if grep { $_ == $look } @{ $current->{repos} };
     }
 
     return ( sort { $scores{$b} <=> $scores{$a} } keys %scores)[0..9];
 }
 
-open my $fh, "<", "download/test.txt";
-while (<$fh>) {
+while (<>) {
     s/[\n\r]+$//;
 
     print "$_:";
