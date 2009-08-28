@@ -18,19 +18,22 @@ my $repo = retrieve "repo.study";
 my $lang = retrieve "lang.study";
 my $top  = retrieve "top.study";
 
-my @NetworkLevels = ( 0, 1);
+my @NetworkLevels = ( 0, 1 );
 sub network {
     my $root = shift;
     my %network;
 
     $network{$root} = @NetworkLevels[0];
-
+    my %done;
+    
     for my $level (1..$#NetworkLevels) {
         for my $node (keys %network) {
-	    my @up      = map { $repo->{$_}->{owner} }      @{ $user->{$node}->{repos} };
-	    my @down    = map { @{ $repo->{$_}->{users} } } @{ $user->{$node}->{owns}  };
-	
-	    $network{$_} //= $NetworkLevels[$level] for @up, @down;
+            next if $done{$node};
+
+	    $network{$_} //= $NetworkLevels[$level]
+                for map { @{ $repo->{$_}->{users} } } @{ $user->{$node}->{repos} };
+
+	    $done{$node}++;
         }
     }
 
