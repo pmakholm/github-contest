@@ -52,22 +52,16 @@ my %owners;
         chomp $line;
         my ($repo, $langs) = split /:/, $line;
 
-	my $lines;
         for my $langcount (split /,/, $langs) {
             my ($lang, $count) = split /;/, $langcount;
-	    $lines += $count;            
-
+            
             $repo{$repo}->{lang}->{$lang} += $count;
             $user{$_}->{lang}->{$lang}    += $count for keys %{ $repo{$repo}->{users} };
 
             $lang{$lang}->{$repo}         += $count;
         }
 
-        my @mainlangs = (
-	    sort { $repo{$repo}->{lang}->{$b} <=> $repo{$repo}->{lang}->{$a} } 
-                grep { ($repo{$repo}->{lang}->{$_} / ($lines + 1)) > 0.25 } 
-                keys %{ $repo{$repo}->{lang} }
-        )[0..2]; 
+        my @mainlangs = (sort { $repo{$repo}->{lang}->{$b} <=> $repo{$repo}->{lang}->{$a} } keys %{ $repo{$repo}->{lang} })[0..2]; 
         
         $repo{$repo}->{mainlang}        = \@mainlangs;
         for my $user ( keys %{ $repo{$repo}->{users} } ) {
