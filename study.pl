@@ -41,6 +41,9 @@ my %owners;
         $repo{$repo}->{created} = $created  // '';
         $repo{$repo}->{forked}  = $fork     // ''; 
 
+	$repo{$repo}->{network} = $fork ? $repo{$fork}->{network} : { };
+	$repo{$repo}->{network}->{$repo} = 1;
+
 	$owners{$owner}->{$repo} = 1;
     }
     close $fh;

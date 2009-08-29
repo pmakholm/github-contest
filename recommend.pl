@@ -37,9 +37,19 @@ sub recommend {
         $scores{$_} += $i++ for reverse @$top;
     }
 
-    # Add score to repositories owned by users allready being followed
+    # Add base score to repositories owned by users allready being followed
     for my $owner (map { $repo->{$_}->{owner} } keys %{ $current->{repos} }) {
         $scores{$_} += 200 for keys %{ $owners->{$owner} };
+    }
+
+    # Add base score to repositories in network with currently watched repositories
+    my %network;
+    for my $look (keys %{ $current->{repos}} ) {
+	for my $node (keys %{ $repo->{$look}->{network} }) {
+            $network{$node}++ or next;
+
+            $scores{$node} += 200;
+        }
     }
 
     # Correct according to language preferrence
@@ -64,13 +74,13 @@ sub recommend {
 
 
     # Preferer the original repos 
-    for my $look (keys %scores) {
-	my $upstream = original($look);
-        next if $look == $upstream;
-
-        $scores{$upstream} = $scores{$upstream} > $scores{$look} ?  $scores{$upstream} : $scores{$look} ;
-        $scores{$repo} = 0;
-    }
+#    for my $look (keys %scores) {
+#	my $upstream = original($look);
+#        next if $look == $upstream;
+#
+#        $scores{$upstream} = $scores{$upstream} > $scores{$look} ?  $scores{$upstream} : $scores{$look} ;
+#        $scores{$repo} = 0;
+#    }
 
     # Remove repos the user is already is watching
     for my $look (keys %scores) {
